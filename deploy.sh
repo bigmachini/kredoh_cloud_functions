@@ -4,4 +4,4 @@
   --runtime python37 \
   --memory 128MB \
   --trigger-event "providers/cloud.firestore/eventTypes/document.create" \
-  --trigger-resource "projects/kredoh/databases/(default)/documents/callbacks/{id}"
+  --trigger-resource "projects/kredoh/databases/(default)/documents/callbacks_test/{id}"
