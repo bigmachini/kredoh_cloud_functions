@@ -1,12 +1,22 @@
 import datetime
 import json
 
+from google.cloud import firestore
+
+KYANDA_CALLBACK = '/kyanda-callback'
+TRANSACTIONS = 'transactions'
+
+
+def get_data_from_firestore(table, key, column='referral_link', operator="=="):
+    collection = firestore.Client().collection(table).where(column, operator, key).stream()
+    return collection
+
 
 def get_at_callback():
     pass
 
 
-def get_kyanda_callback( data):
+def get_kyanda_callback(data):
     def process_details(details):
         bill_receipt = details.get('biller_Receipt', None)
         if bill_receipt:
@@ -43,13 +53,16 @@ def get_kyanda_callback( data):
     return content
 
 
+def process_callbacks(path, ref, data=None):
+    if path == KYANDA_CALLBACK:
+        transactions = [x.to_dict() for x in get_data_from_firestore(TRANSACTIONS, ref, 'merchant_reference')]
+        print(f'process_callbacks:: transaction --> {transactions}')
+
 
 operations = {
     '/at-callback': get_at_callback,
-    '/kyanda-callback': get_kyanda_callback
+    KYANDA_CALLBACK: get_kyanda_callback
 }
-
-
 
 
 def get_transaction_id(name):
@@ -100,7 +113,7 @@ def get_execution_time(create_time, update_time):
     return -1
 
 
-def process_callbacks(data, context):
+def entry_point(data, context):
     """ Triggered by a change to a Firestore document.
     Args:
         data (dict): The event payload.
@@ -121,12 +134,12 @@ def process_callbacks(data, context):
                 if _data:
                     print(f'process_callbacks:: operations[path] --> {operations[path]}')
                     content = operations[path](_data['mapValue']['fields'])
+                    process_callbacks(path, ref, content)
 
         execution_time, create_time, update_time = get_execution_time(create_time, update_time)
 
         print(f'update_transaction:: value --> {json.dumps(data["value"])}')
         print(f'update_transaction:: execution_time --> {execution_time}')
-        print(f'update_transaction:: fields --> {json.dumps(fields)}')
         print(f'update_transaction:: data --> {json.dumps(_data)}')
         print(f'update_transaction:: ref --> {json.dumps(ref)}')
         print(f'update_transaction:: path --> {json.dumps(path)}')
